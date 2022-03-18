@@ -21,7 +21,6 @@ from module.commentCollector import commentCollector
 from module.utils import (
     remove_not_korean_alphabet_number,
     remove_stop_pos,
-    send_message_to_slack,
     clean_text,
     drop_duplicated_comments,
     drop_not_include_korean_comments,
@@ -57,16 +56,16 @@ def get_new_video_comment(
     with tqdm(video_ids) as t:
         for vi, video_id in enumerate(t):
             t.set_description(f"[video : {vi}]")
+            
             if checkpoint_manager.new_video_response_checkpoint_exist():
                 response = checkpoint_manager.read_new_video_response_checkpoint()
             else:
                 try:
                     response = comment_collector.request_comment(video_id)
                 except HttpError as e:
-                    if e.resp.status in [403]:
+                    if e.resp.status in [403, 400]:
                         continue
                     else:
-                        send_message_to_slack(str(e))
                         raise
 
             try:
@@ -124,7 +123,6 @@ def get_new_video_comment(
                             if e.resp.status in [403]:
                                 break
                             else:
-                                send_message_to_slack(str(e))
                                 raise
                     else:
                         break
@@ -133,7 +131,6 @@ def get_new_video_comment(
                 checkpoint_manager.save_new_video_checkpoint(
                     response, most_popular_video_id_and_title_list[vi:], comments
                 )
-                send_message_to_slack(str(e))
                 raise
             comments.extend(transaction_comments)
 
@@ -172,12 +169,9 @@ def get_exist_video_comment(
                     response = comment_collector.request_comment(video_id)
                 except HttpError as e:
                     if e.resp.status in [403, 404]:
-                        if e.error_details[0]["reason"] == "videoNotFound":
-                            database.delete_not_found_video_comment(video_id)
                         continue
 
                     else:
-                        send_message_to_slack(str(e))
                         raise
 
             try:
@@ -243,7 +237,6 @@ def get_exist_video_comment(
                             if e.resp.status in [403]:
                                 break
                             else:
-                                send_message_to_slack(str(e))
                                 raise
                     else:
                         break
@@ -252,7 +245,6 @@ def get_exist_video_comment(
                 checkpoint_manager.save_exist_video_checkpoint(
                     response, video_ids[vi:], comments
                 )
-                send_message_to_slack(str(e))
                 raise
 
             comments.extend(transaction_comments)
@@ -275,7 +267,7 @@ def get_dataset(
         exist_video_and_max_date = database.select_exist_video_and_max_date()
 
         exist_video_ids = list()
-        if exist_video_and_max_date != ():
+        if exist_video_and_max_date != []:
             exist_video_ids = list(pd.DataFrame(exist_video_and_max_date)["video_id"])
             print("get_exist_video_comment")
             temp_comments = get_exist_video_comment(
@@ -292,13 +284,10 @@ def get_dataset(
         )
         new_comments.extend(temp_comments)
 
-        send_message_to_slack(
-            "add exist video comments : {}".format(len(exist_comments))
-        )
+        
         exist_comments_df = pd.DataFrame(exist_comments)
         exist_comments_df = drop_duplicated_comments(exist_comments_df)
 
-        send_message_to_slack("add new video comments : {}".format(len(new_comments)))
         new_comments_df = pd.DataFrame(new_comments)
         new_comments_df = drop_duplicated_comments(new_comments_df)
 
@@ -371,6 +360,8 @@ def get_token_trend_ranking(database, trend_args):
 
     # select comment
     six_day_result, six_day_result_df = database.select_six_day_comment()
+    if len(six_day_result)<=0:
+        return "NOTKENSIXDAY", "NOTKENSIXDAY"
     queryday_result, queryday_result_df = database.select_queryday_comment()
     week_result = pd.concat([six_day_result_df, queryday_result_df]).reset_index(
         drop=True
@@ -415,7 +406,6 @@ def get_token_trend_ranking(database, trend_args):
         ranked_queryday_tokens, columns=["token", "score"]
     )
 
-    database.init_queryday_trend_token()
 
     ranked_queryday_tokens_df = ranked_queryday_tokens_df.head(
         trend_args.max_trend_token
@@ -455,7 +445,6 @@ def word2vec_analysis(
     )
     similar_tokens_df = similar_tokens_df.set_index("token")
 
-    database.init_queryday_similar_token()
 
     similar_tokens_df = similar_tokens_df.head(trend_args.max_trend_token)
     print("start INSERT INTO similar_token_table")
@@ -472,7 +461,6 @@ def tsne_analysis(ranked_tokens, trend_args, model_name="1minwords"):
 
     tsne_df = pd.DataFrame(X_tsne, index=ranked_tokens[:max_size], columns=["x", "y"])
 
-    database.init_queryday_tsne()
 
     tsne_df = tsne_df.head(trend_args.max_trend_token)
     print("start INSERT INTO tsne_table")
@@ -484,6 +472,8 @@ def get_trend(database, checkpoint_manager, trend_args):
         ranked_tokens, sentence_tokens_for_word2vec = get_token_trend_ranking(
             database, trend_args
         )
+        if ranked_tokens == "NOTKENSIXDAY":
+            return 
         checkpoint_manager.save_trend_rank_checkpoint(
             ranked_tokens, sentence_tokens_for_word2vec
         )
@@ -527,7 +517,6 @@ if __name__ == "__main__":
 
     yesterday = (datetime.datetime.now() - datetime.timedelta(days=1)).date()
     week = get_week(queryday=yesterday)
-    send_message_to_slack("week : " + ",".join([w.split("-")[-1] for w in week]))
 
     database = DataBase(week)
 
@@ -543,7 +532,6 @@ if __name__ == "__main__":
                 trend_args=trend_args,
             )
     else:
-        send_message_to_slack("start get comment")
         try:
             if not checkpoint_manager.exist_get_dataset_checkpoint():
                 get_dataset(
@@ -562,8 +550,6 @@ if __name__ == "__main__":
                 trend_args=trend_args,
             )
         except Exception as e:
-            send_message_to_slack(str(e))
             raise
         finally:
             database.close()
-            send_message_to_slack("end")

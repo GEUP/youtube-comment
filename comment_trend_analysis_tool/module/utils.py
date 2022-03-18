@@ -1,13 +1,5 @@
-import requests
 import re
 import datetime
-
-
-def send_message_to_slack(msg):
-    url = "https://hooks.slack.com/services/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"
-    data = {"text": msg}
-    resp = requests.post(url=url, json=data)
-    return resp
 
 
 def clean_text(text):
@@ -25,9 +17,7 @@ def clean_text(text):
 
 
 def drop_duplicated_comments(comment_df):
-    before_drop = len(comment_df)
     comment_df = comment_df.drop_duplicates([0, 1, 2])
-    send_message_to_slack("drop {} rows".format(before_drop - len(comment_df)))
 
     return comment_df
 
@@ -48,6 +38,9 @@ def remove_stop_pos(okt, token, stop_pos):
     poss = okt.pos(token)
     use_pos = []
     for p in poss:
+        if len(p)<2:
+            print(p)
+            continue
         if p[1] in stop_pos:
             continue
         else:
