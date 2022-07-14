@@ -6,6 +6,7 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.log.logging_mixin import LoggingMixin
 import pendulum
 import os
+import json
 
 output_path = "/commnets"
 
@@ -13,7 +14,7 @@ dag = DAG(
     dag_id="collect_youtube_comment_in_container",
     start_date=pendulum.now().subtract(days=2),
     schedule_interval="@daily",
-    default_args={"output_path": output_path},
+    user_defined_filters={"from_str_to_json": lambda s: json.loads(s)}
 )
 
 collect_video_id = DockerOperator(
@@ -28,58 +29,59 @@ collect_video_id = DockerOperator(
     auto_remove=True,
     mounts=[Mount(source="/root/comments", target="/comments", type="bind")],
     docker_url = "unix://var/run/docker.sock",
-    network_mode="bridge",
+    network_mode="host",
     mount_tmp_dir=False,
     dag=dag,
 )
 
-# pub_exist_video_id = DockerOperator(
-#     task_id="pub_exist_video_id", 
-#     image="geup/pub_exist_video_id",
-#     command=[
-#         "--output_path", output_path,
-#         "--schema", "{{ conn.rabbitmq_video_id.schema }}",
-#         "--host", "{{ conn.rabbitmq_video_id.host }}",
-#         "--port", "{{ conn.rabbitmq_video_id.port }}",
-#         "--password", "{{ conn.rabbitmq_video_id.schema }}",
-#         "--vhost", "{{ conn.rabbitmq_video_id.extra['vhost'] }}",
-#         "--routing_key", "exist_video_q",
-#         "--exist_video_id_list", "{{ task_instance.xcom_pull(task_ids='collect_video_id', key='return_value')['exist_video_id_list']}}"
-#     ],
-#     api_version="auto",
-#     auto_remove=True,
-#     mounts=[Mount(source="/root/comments", target="/comments", type="bind")],
-#     docker_url = "unix://var/run/docker.sock",
-#     network_mode="bridge",
-#     mount_tmp_dir=False,
-#     dag=dag,
-# )
+pub_exist_video_id = DockerOperator(
+    task_id="pub_exist_video_id", 
+    image="geup/pub_exist_video:test",
+    command=[
+        "--schema", "{{ conn.rabbitmq_video_id.schema }}",
+        "--host", "{{ conn.rabbitmq_video_id.host }}",
+        "--port", "{{ conn.rabbitmq_video_id.port }}",
+        "--login", "{{ conn.rabbitmq_video_id.login }}",
+        "--password", "{{ conn.rabbitmq_video_id.password }}",
+        "--vhost", "{{ conn.rabbitmq_video_id.extra['vhost'] }}",
+        "--routing_key", "exist_video_q",
+        "--exist_video_id_list", "{{ task_instance.xcom_pull(task_ids='collect_video_id', key='return_value')['exist_video_id_list']}}"
+    ],
+    api_version="auto",
+    auto_remove=True,
+    docker_url = "unix://var/run/docker.sock",
+    network_mode="host",
+    mount_tmp_dir=False,
+    dag=dag,
+)
 
-# pub_not_exist_video_id = DockerOperator(
-#     task_id="pub_not_exist_video_id", 
-#     image="geup/pub_not_exist_video_id",
-#     command=[
-#         "--output_path", output_path,
-#         "--schema", "{{ conn.rabbitmq_video_id.schema }}",
-#         "--host", "{{ conn.rabbitmq_video_id.host }}",
-#         "--port", "{{ conn.rabbitmq_video_id.port }}",
-#         "--password", "{{ conn.rabbitmq_video_id.schema }}",
-#         "--vhost", "{{ conn.rabbitmq_video_id.extra['vhost'] }}",
-#         "--routing_key", "not_exist_video_q",
-#         "--not_exist_video_id_list", "{{ task_instance.xcom_pull(task_ids='collect_video_id', key='return_value')['not_exist_video_id_list']}}"
-#     ],
-#     api_version="auto",
-#     auto_remove=True,
-#     mounts=[Mount(source="/root/comments", target="/comments", type="bind")],
-#     docker_url = "unix://var/run/docker.sock",
-#     network_mode="bridge",
-#     mount_tmp_dir=False,
-#     dag=dag,
-# )
+pub_not_exist_video_id = DockerOperator(
+    task_id="pub_not_exist_video_id", 
+    image="geup/pub_not_exist_video:test",
+    command=[
+        "--schema", "{{ conn.rabbitmq_video_id.schema }}",
+        "--host", "{{ conn.rabbitmq_video_id.host }}",
+        "--port", "{{ conn.rabbitmq_video_id.port }}",
+        "--login", "{{ conn.rabbitmq_video_id.login }}",
+        "--password", "{{ conn.rabbitmq_video_id.password }}",
+        "--vhost", "{{ (conn.rabbitmq_video_id.extra | from_str_to_json)['vhost'] }}",
+        "--routing_key", "not_exist_video_q",
+        "--not_exist_video_id_list", "{{ (task_instance.xcom_pull(task_ids='collect_video_id', key='return_value') | from_str_to_json)['not_exist_video_id_list']}}"
+    ],
+    api_version="auto",
+    auto_remove=True,
+    docker_url = "unix://var/run/docker.sock",
+    network_mode="host",
+    mount_tmp_dir=False,
+    dag=dag,
+)
+
+collect_video_id >> pub_exist_video_id
+collect_video_id >> pub_not_exist_video_id
 
 # collect_not_exist_video_comment = DockerOperator(
 #     task_id="collect_not_exist_video_comment", 
-#     image="geup/collect_not_exist_video_comment",
+#     image="geup/collect_not_exist_video_comment:test",
 #     command=[
 #         "--output_path", output_path,
 #         "--token", "{{ conn.youtube_data_api.password }}",
@@ -94,14 +96,14 @@ collect_video_id = DockerOperator(
 #     auto_remove=True,
 #     mounts=[Mount(source="/root/comments", target="/comments", type="bind")],
 #     docker_url = "unix://var/run/docker.sock",
-#     network_mode="bridge",
+#     network_mode="host",
 #     mount_tmp_dir=False,
 #     dag=dag,
 # )
 
 # collect_exist_video_comment = DockerOperator(
 #     task_id="collect_exist_video_comment", 
-#     image="geup/collect_exist_video_comment",
+#     image="geup/collect_exist_video_comment:test",
 #     command=[
 #         "--output_path", output_path,
 #         "--token", "{{ conn.youtube_data_api.password }}",
@@ -116,12 +118,11 @@ collect_video_id = DockerOperator(
 #     auto_remove=True,
 #     mounts=[Mount(source="/root/comments", target="/comments", type="bind")],
 #     docker_url = "unix://var/run/docker.sock",
-#     network_mode="bridge",
+#     network_mode="host",
 #     mount_tmp_dir=False,
 #     dag=dag,
 # )
 
-# collect_video_id >> pub_exist_video_id
-# collect_video_id >> pub_not_exist_video_id
+
 # pub_not_exist_video_id >> collect_not_exist_video_comment
 # pub_exist_video_id >> collect_exist_video_comment
