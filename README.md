@@ -1,4 +1,4 @@
-# Airflow를 활용한 유튜브 댓글 수집
+# DockerOperator를 활용한 유튜브 댓글 수집
 
 ## 아키텍처
 ![image](https://user-images.githubusercontent.com/33981028/177942424-371b5972-aed3-4a79-aebe-97bd80dac42d.png)
