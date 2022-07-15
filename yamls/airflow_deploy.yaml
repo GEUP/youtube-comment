@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-airflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: airflow
+  template:
+    metadata:
+      name: airflow
+      labels:
+        app: airflow
+    spec:
+      containers:
+      - name: airflow-container
+        image: apache/airflow:2.3.2-python3.8
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        command: ["/bin/sh"]
+        args: ["-c", "airflow db init; airflow users create --username admin --password admin --firstname Anonymous --lastname Admin --role Admin --email admin@example.org; airflow webserver; airflow scheduler"]
