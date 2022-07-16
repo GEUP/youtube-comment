@@ -1,12 +1,23 @@
 import airflow
 from airflow import DAG
-from airflow.providers.docker.operators.docker import DockerOperator
-from docker.types import Mount
-from airflow.operators.python import PythonOperator
-from airflow.utils.log.logging_mixin import LoggingMixin
+from airflow.providers.cncf.kubernetes.operators.kubernetes_pod import KubernetesPodOperator
+from kubernetes.client import models as k8s
 import pendulum
-import os
 import json
+
+volume_claim = k8s.V1PersistentVolumeClaimVolumeSource(
+    claim_name = "comments-volume"
+)
+volume = k8s.V1Volume(
+    name="comments-volume",
+    persistent_volume_claim=volume_claim
+)
+volume_mount = k8s.V1VolumeMount(
+    name="comments-volume",
+    mount_path="/comments", #컨테이너 안에서 볼륨을 마운트할 경로
+    pub_path=None,
+    read_only=False
+)
 
 output_path = "/commnets"
 
@@ -17,27 +28,29 @@ dag = DAG(
     user_defined_filters={"from_str_to_json": lambda s: json.loads(s)}
 )
 
-collect_video_id = DockerOperator(
+collect_video_id = KubernetesPodOperator(
     task_id="collect_video_id", 
     image="geup/collect_video_id:test",
-    container_name="collect",
-    command=[
+    cmds=[""],
+    arguments=[
         "--output_path", output_path,
         "--token", "{{ conn.youtube_data_api.password }}",
     ],
-    api_version="auto",
-    auto_remove=True,
-    mounts=[Mount(source="/root/comments", target="/comments", type="bind")],
-    docker_url = "unix://var/run/docker.sock",
-    network_mode="host",
-    mount_tmp_dir=False,
+    namespace="airflow",
+    name="collect_video_id",
+    in_cluster=True,
+    volumes=[volume],
+    volume_mounts=[volume_mount],
+    image_pull_policy="IfNotPresent",
+    is_delete_operator_pod=True,    
     dag=dag,
 )
 
-pub_exist_video_id = DockerOperator(
+pub_exist_video_id = KubernetesPodOperator(
     task_id="pub_exist_video_id", 
     image="geup/pub_exist_video:test",
-    command=[
+    cmds=[""],
+    arguments=[
         "--schema", "{{ conn.rabbitmq_video_id.schema }}",
         "--host", "{{ conn.rabbitmq_video_id.host }}",
         "--port", "{{ conn.rabbitmq_video_id.port }}",
@@ -47,18 +60,19 @@ pub_exist_video_id = DockerOperator(
         "--routing_key", "exist_video_q",
         "--exist_video_id_list", "{{ task_instance.xcom_pull(task_ids='collect_video_id', key='return_value')['exist_video_id_list']}}"
     ],
-    api_version="auto",
-    auto_remove=True,
-    docker_url = "unix://var/run/docker.sock",
-    network_mode="host",
-    mount_tmp_dir=False,
+    namespace="airflow",
+    name="pub_exist_video_id",
+    in_cluster=True,
+    image_pull_policy="IfNotPresent",
+    is_delete_operator_pod=True,
     dag=dag,
 )
 
-pub_not_exist_video_id = DockerOperator(
+pub_not_exist_video_id = KubernetesPodOperator(
     task_id="pub_not_exist_video_id", 
     image="geup/pub_not_exist_video:test",
-    command=[
+    cmds=[""],
+    arguments=[
         "--schema", "{{ conn.rabbitmq_video_id.schema }}",
         "--host", "{{ conn.rabbitmq_video_id.host }}",
         "--port", "{{ conn.rabbitmq_video_id.port }}",
@@ -68,11 +82,11 @@ pub_not_exist_video_id = DockerOperator(
         "--routing_key", "not_exist_video_q",
         "--not_exist_video_id_list", "{{ (task_instance.xcom_pull(task_ids='collect_video_id', key='return_value') | from_str_to_json)['not_exist_video_id_list']}}"
     ],
-    api_version="auto",
-    auto_remove=True,
-    docker_url = "unix://var/run/docker.sock",
-    network_mode="host",
-    mount_tmp_dir=False,
+    namespace="airflow",
+    name="pub_not_exist_video_id",
+    in_cluster=True,
+    image_pull_policy="IfNotPresent",
+    is_delete_operator_pod=True,
     dag=dag,
 )
 
