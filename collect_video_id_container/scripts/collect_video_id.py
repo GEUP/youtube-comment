@@ -73,7 +73,9 @@ def main(output_path, token):
         else:
             not_exist_video_id_list.append(video_id)
     
-    print(json.dumps({"exist_video_id_list": exist_video_id_list, "not_exist_video_id_list": not_exist_video_id_list}))
+    with open("/airflow/xcom/return.json", mode="w") as f:
+        f.write(json.dumps({"exist_video_id_list": exist_video_id_list, "not_exist_video_id_list": not_exist_video_id_list}))
+    
     
 if __name__=="__main__":
     main()
