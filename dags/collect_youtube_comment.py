@@ -42,7 +42,7 @@ collect_video_id = KubernetesPodOperator(
     volume_mounts=[volume_mount],
     image_pull_policy="Always",
     is_delete_operator_pod=True,
-    #do_xcom_push=True,
+    do_xcom_push=True,
     dag=dag,
 )
 
