@@ -30,7 +30,7 @@ dag = DAG(
 collect_video_id = KubernetesPodOperator(
     task_id="collect_video_id", 
     image="geup/collect_video_id:test",
-    cmds=[""],
+    #cmds=[""],
     arguments=[
         "--output_path", output_path,
         "--token", "{{ conn.youtube_data_api.password }}",
@@ -48,7 +48,7 @@ collect_video_id = KubernetesPodOperator(
 pub_exist_video_id = KubernetesPodOperator(
     task_id="pub_exist_video_id", 
     image="geup/pub_exist_video:test",
-    cmds=[""],
+    #cmds=[""],
     arguments=[
         "--schema", "{{ conn.rabbitmq_video_id.schema }}",
         "--host", "{{ conn.rabbitmq_video_id.host }}",
@@ -70,7 +70,7 @@ pub_exist_video_id = KubernetesPodOperator(
 pub_not_exist_video_id = KubernetesPodOperator(
     task_id="pub_not_exist_video_id", 
     image="geup/pub_not_exist_video:test",
-    cmds=[""],
+    #cmds=[""],
     arguments=[
         "--schema", "{{ conn.rabbitmq_video_id.schema }}",
         "--host", "{{ conn.rabbitmq_video_id.host }}",
