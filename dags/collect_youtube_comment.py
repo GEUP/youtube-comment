@@ -15,7 +15,7 @@ volume = k8s.V1Volume(
 volume_mount = k8s.V1VolumeMount(
     name="comments-volume",
     mount_path="/comments", #컨테이너 안에서 볼륨을 마운트할 경로
-    pub_path=None,
+    read_only=False
 )
 
 output_path = "/commnets"
