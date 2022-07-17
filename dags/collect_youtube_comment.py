@@ -24,7 +24,7 @@ dag = DAG(
     dag_id="collect_youtube_comment_in_container",
     start_date=pendulum.now().subtract(days=2),
     schedule_interval="@daily",
-    user_defined_filters={"from_str_to_json": lambda s: json.loads(s), "from_str_to_list": lambda s: eval(s)}
+    user_defined_filters={"from_str_to_json": lambda s: json.loads(s)}
 )
 
 collect_video_id = KubernetesPodOperator(
@@ -58,7 +58,7 @@ pub_exist_video_id = KubernetesPodOperator(
         "--password", "{{ conn.rabbitmq_video_id.password }}",
         "--vhost", "{{ (conn.rabbitmq_video_id.extra | from_str_to_json)['vhost'] }}",
         "--routing_key", "exist_video_q",
-        "--exist_video_id_list", "{{ (task_instance.xcom_pull(task_ids='collect_video_id', key='return_value')['exist_video_id_list'] | from_str_to_list)}}"
+        "--exist_video_id_list", "{{ task_instance.xcom_pull(task_ids='collect_video_id', key='return_value')['exist_video_id_list']}}"
     ],
     namespace="airflow",
     name="pub_exist_video_id",
@@ -80,7 +80,7 @@ pub_not_exist_video_id = KubernetesPodOperator(
         "--password", "{{ conn.rabbitmq_video_id.password }}",
         "--vhost", "{{ (conn.rabbitmq_video_id.extra | from_str_to_json)['vhost'] }}",
         "--routing_key", "not_exist_video_q",
-        "--not_exist_video_id_list", "{{ (task_instance.xcom_pull(task_ids='collect_video_id', key='return_value')['not_exist_video_id_list'] | from_str_to_list)}}"
+        "--not_exist_video_id_list", "{{ task_instance.xcom_pull(task_ids='collect_video_id', key='return_value')['not_exist_video_id_list']}}"
     ],
     namespace="airflow",
     name="pub_not_exist_video_id",
