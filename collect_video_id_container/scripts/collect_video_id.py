@@ -6,10 +6,7 @@ import click
 import os
 import json
 
-
 logging.basicConfig(level=logging.INFO)
-
-
 
 def get_most_popular_video_id_and_title_generator(api_obj, maxResults=50):
         
@@ -77,7 +74,6 @@ def main(output_path, token):
         os.makedirs("/airflow/xcom")
     with open("/airflow/xcom/return.json", mode="w") as f:
         f.write(json.dumps({"exist_video_id_list": exist_video_id_list, "not_exist_video_id_list": not_exist_video_id_list}))
-    
     
 if __name__=="__main__":
     main()
