@@ -55,7 +55,7 @@ pub_exist_video_id = KubernetesPodOperator(
         "--port", "{{ conn.rabbitmq_video_id.port }}",
         "--login", "{{ conn.rabbitmq_video_id.login }}",
         "--password", "{{ conn.rabbitmq_video_id.password }}",
-        "--vhost", "{{ conn.rabbitmq_video_id.extra['vhost'] }}",
+        "--vhost", "{{ (conn.rabbitmq_video_id.extra | from_str_to_json)['vhost'] }}",
         "--routing_key", "exist_video_q",
         "--exist_video_id_list", "{{ task_instance.xcom_pull(task_ids='collect_video_id', key='return_value')['exist_video_id_list']}}"
     ],
