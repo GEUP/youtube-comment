@@ -63,7 +63,7 @@ pub_exist_video_id = KubernetesPodOperator(
     namespace="airflow",
     name="pub_exist_video_id",
     in_cluster=True,
-    image_pull_policy="IfNotPresent",
+    image_pull_policy="Always",
     is_delete_operator_pod=True,
     dag=dag,
 )
@@ -85,7 +85,7 @@ pub_not_exist_video_id = KubernetesPodOperator(
     namespace="airflow",
     name="pub_not_exist_video_id",
     in_cluster=True,
-    image_pull_policy="IfNotPresent",
+    image_pull_policy="Always",
     is_delete_operator_pod=True,
     dag=dag,
 )
