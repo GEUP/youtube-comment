@@ -75,6 +75,8 @@ logging.basicConfig(level=logging.INFO)
 )             
 def main(schema, host, port, login, password, vhost, routing_key, exist_video_id_list):
     tx, chan = get_tx_and_chan(schema, host, port, login, password, vhost)
+    if isinstance(exist_video_id_list, str):
+        exist_video_id_list = eval(exist_video_id_list)
     pub_video_id_list(tx, chan, routing_key, exist_video_id_list[:3]) #for test
     
 if __name__=="__main__":
