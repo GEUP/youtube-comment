@@ -20,4 +20,42 @@ spec:
         - containerPort: 8080
           protocol: TCP
         command: ["/bin/sh"]
-        args: ["-c", "airflow db init; airflow users create --username admin --password admin --firstname Anonymous --lastname Admin --role Admin --email admin@example.org; airflow webserver; airflow scheduler; pip install -y apache-airflow-providers-cncf-kubernetes; pip install -y kubernetes;"]
+        args: ["-c", "airflow db init; airflow users create --username admin --password admin --firstname Anonymous --lastname Admin --role Admin --email admin@example.org; airflow webserver -D; airflow scheduler -D;"]
+        volumeMounts:
+        - name: dag
+          mountPath: /opt/airflow/dags
+          readOnly: true
+      - name: git-sync-container
+        image: k8s.gcr.io/git-sync:v3.1.1
+        command: ["/bin/sh"]
+        args: ["-c", "mkdir -p /git/youtube-comment/dags;"]
+        env:
+        - name: GIT_SYNC_REPO
+          value: https://github.com/GEUP/youtube-comment.git
+        - name: GIT_SYNC_BRANCH
+          value: useKubernetes
+        - name: GIT_SYNC_ROOT
+          value: /git
+        - name: GIT_SYNC_DEST
+          value: youtube-comment
+        volumeMounts:
+        - name: dag
+          mountPath: /git/youtube-comment/dags
+      volumes:
+      - name: dag
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-loadbalancer-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: airflow
+  ports:
+  - protocol: TCP
+    nodePort: 30080
+    port: 8080
+    targetPort: 8080
