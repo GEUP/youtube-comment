@@ -80,7 +80,7 @@ pub_not_exist_video_id = KubernetesPodOperator(
         "--password", "{{ conn.rabbitmq_video_id.password }}",
         "--vhost", "{{ (conn.rabbitmq_video_id.extra | from_str_to_json)['vhost'] }}",
         "--routing_key", "not_exist_video_q",
-        "--not_exist_video_id_list", "{{ (task_instance.xcom_pull(task_ids='collect_video_id', key='return_value') | from_str_to_json)['not_exist_video_id_list']}}"
+        "--not_exist_video_id_list", "{{ task_instance.xcom_pull(task_ids='collect_video_id', key='return_value')['not_exist_video_id_list']}}"
     ],
     namespace="airflow",
     name="pub_not_exist_video_id",
