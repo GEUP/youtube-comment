@@ -290,8 +290,7 @@ def modify_comment_json(api_obj, video_id, comments_dict):
     )
     total_response_page=1
     while response:
-        if "nextPageToken" in response:
-            print(response["nextPageToken"])
+        
         for item in response["items"]:
             id = item["snippet"]["topLevelComment"]["id"]
             totalReplyCount = item["snippet"]["totalReplyCount"]
@@ -350,6 +349,7 @@ def modify_comment_json(api_obj, video_id, comments_dict):
             )
         else:
             break
+        
     print("total_response_page : ", total_response_page)
     print("new_comment_cnt : ", new_comment_cnt)
     print("updated_comment_text_cnt : ", updated_comment_text_cnt)
