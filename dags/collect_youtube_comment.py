@@ -122,7 +122,7 @@ collect_exist_video_comment = KubernetesPodOperator(
     #cmds=[""],
     arguments=[
         "--output_path", output_path,
-        "--token", "{{ conn.youtube_data_api.password }}",
+        "--token", "{{ conn.youtube_data_api2.password }}",
         "--schema", "{{ conn.rabbitmq_video_id.schema }}",
         "--host", "{{ conn.rabbitmq_video_id.host }}",
         "--port", "{{ conn.rabbitmq_video_id.port }}",
