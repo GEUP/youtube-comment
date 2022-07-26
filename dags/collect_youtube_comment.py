@@ -18,7 +18,7 @@ volume_mount = k8s.V1VolumeMount(
     read_only=False
 )
 
-output_path = "/commnets"
+output_path = "/comments"
 
 dag = DAG(
     dag_id="collect_youtube_comment_in_container",
