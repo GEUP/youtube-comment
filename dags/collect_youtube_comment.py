@@ -116,29 +116,31 @@ collect_not_exist_video_comment = KubernetesPodOperator(
     dag=dag,
 )
 
-collect_video_id >> pub_exist_video_id
+collect_exist_video_comment = KubernetesPodOperator(
+    task_id="collect_exist_video_comment", 
+    image="geup/collect_exist_video_comment:test",
+    #cmds=[""],
+    arguments=[
+        "--output_path", output_path,
+        "--token", "{{ conn.youtube_data_api.password }}",
+        "--schema", "{{ conn.rabbitmq_video_id.schema }}",
+        "--host", "{{ conn.rabbitmq_video_id.host }}",
+        "--port", "{{ conn.rabbitmq_video_id.port }}",
+        "--login", "{{ conn.rabbitmq_video_id.login }}",
+        "--password", "{{ conn.rabbitmq_video_id.password }}",
+        "--vhost", "{{ (conn.rabbitmq_video_id.extra | from_str_to_json)['vhost'] }}",
+        "--routing_key", "exist_video_q"
+    ],
+    namespace="airflow",
+    name="collect_not_exist_video_comment",
+    get_logs=True,
+    in_cluster=True,
+    volumes=[volume],
+    volume_mounts=[volume_mount],
+    image_pull_policy="Always",
+    is_delete_operator_pod=True,
+    dag=dag,
+)
+
+collect_video_id >> pub_exist_video_id >> collect_exist_video_comment
 collect_video_id >> pub_not_exist_video_id >> collect_not_exist_video_comment
-
-# collect_exist_video_comment = DockerOperator(
-#     task_id="collect_exist_video_comment", 
-#     image="geup/collect_exist_video_comment:test",
-#     command=[
-#         "--output_path", output_path,
-#         "--token", "{{ conn.youtube_data_api.password }}",
-#         "--schema", "{{ conn.rabbitmq_video_id.schema }}",
-#         "--host", "{{ conn.rabbitmq_video_id.host }}",
-#         "--port", "{{ conn.rabbitmq_video_id.port }}",
-#         "--password", "{{ conn.rabbitmq_video_id.schema }}",
-#         "--extra", "{{ conn.rabbitmq_video_id.extra }}",
-#         "--routing_key", "exist_video_q",
-#     ],
-#     api_version="auto",
-#     auto_remove=True,
-#     mounts=[Mount(source="/root/comments", target="/comments", type="bind")],
-#     docker_url = "unix://var/run/docker.sock",
-#     network_mode="host",
-#     mount_tmp_dir=False,
-#     dag=dag,
-# )
-
-# pub_exist_video_id >> collect_exist_video_comment
